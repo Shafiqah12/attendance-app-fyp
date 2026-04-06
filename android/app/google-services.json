@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "193075970898",
+    "project_id": "attendify-7fcde",
+    "storage_bucket": "attendify-7fcde.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:193075970898:android:4c13ad1c365d0954d6b08b",
+        "android_client_info": {
+          "package_name": "com.example.blood_donation"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCyoQt0HfQdRR4puWl1MwQImqpET0KYA4g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

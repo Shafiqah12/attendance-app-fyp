@@ -1,0 +1,2 @@
+D:/Mad_Project/attendify/android/app/.cxx/Debug/4j215f3j/arm64-v8a/CMakeFiles/edit_cache.dir
+D:/Mad_Project/attendify/android/app/.cxx/Debug/4j215f3j/arm64-v8a/CMakeFiles/rebuild_cache.dir
