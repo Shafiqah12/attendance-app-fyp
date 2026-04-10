@@ -97,7 +97,7 @@ class UserProfile {
 
 class ApiService {
   // 🔧 IMPORTANT: Replace with your computer's IP address!
-  static const String baseUrl = 'http://10.62.53.69:5000';  // Your IP from above
+  static const String baseUrl = 'http://10.159.158.231:5000';
   
   // ==================== AUTHENTICATION ====================
   
