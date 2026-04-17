@@ -92,9 +92,9 @@ class appRoutes {
         return MaterialPageRoute(builder: (c) => EditClassPage(classId: classId ?? ''));
         
       case appRoutes.editAttendanceViewPage:
-        final args = settings.arguments as Map<String, dynamic>?;
-        final classId = args?['classId']?.toString() ?? '';
-        final attendanceDate = args?['Date']?.toString() ?? '';
+        final args = settings.arguments as Map<String, String>?;
+        final classId = args?['classId'] ?? '';
+        final attendanceDate = args?['Date'] ?? '';
         return MaterialPageRoute(builder: (c) => EditAttendanceView(
           classId: classId,
           attendanceDate: attendanceDate,

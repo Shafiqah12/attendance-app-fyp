@@ -1,9 +1,7 @@
-import 'package:attendify/Parts/Custom_listCardEnrolledStudent.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:attendify/services/auth_service.dart';
 import 'package:attendify/services/api_service.dart';
-import 'Theme/apptheme.dart';
 import 'package:attendify/util/appRoutes.dart';
 
 class EnrollStudentsPage extends StatefulWidget {
@@ -57,124 +55,63 @@ class _EnrollStudentsPageState extends State<EnrollStudentsPage> {
     }
   }
 
-  Future<void> _unenrollStudent(String enrollmentId, String studentName) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Unenroll Student'),
-        content: Text('Are you sure you want to remove $studentName from this class?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Remove', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    try {
-      final success = await ApiService.unenrollStudent(enrollmentId);
-      
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$studentName removed from class')),
-        );
-        _loadEnrolledStudents();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to remove student'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final textTh = theme.textTheme;
-    final btnTh = theme.elevatedButtonTheme.style;
-
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: theme.primaryColor,
-        title: Text('Enrolled Students', style: theme.appBarTheme.titleTextStyle),
+        title: const Text('Enrolled Students'),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Total Students: ${_enrolledStudents.length}',
-                  style: textTh.headlineMedium,
-                ),
-                ElevatedButton(
-                  style: btnTh,
-                  onPressed: () {
-                    Navigator.pushNamed(
-                      context,
-                      appRoutes.addEnrolledStudentPage,
-                      arguments: widget.classId,
-                    ).then((_) => _loadEnrolledStudents());
-                  },
-                  child: const Text('Enroll Student'),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(_error!),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: _loadEnrolledStudents,
-                              child: const Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      )
-                    : _enrolledStudents.isEmpty
-                        ? const Center(child: Text('No students enrolled.'))
-                        : RefreshIndicator(
-                            onRefresh: _loadEnrolledStudents,
-                            child: ListView.builder(
-                              itemCount: _enrolledStudents.length,
-                              itemBuilder: (context, index) {
-                                final student = _enrolledStudents[index];
-                                return listCardEnrolledStudent(
-                                  classId: widget.classId,
-                                  student: student,  // Directly pass EnrolledStudent
-                                  onUnenroll: () => _unenrollStudent(
-                                    student.enrollmentId,
-                                    student.studentName,
-                                  ),
-                                );
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(child: Text(_error!))
+              : _enrolledStudents.isEmpty
+                  ? const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.people, size: 64, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text('No students enrolled'),
+                          SizedBox(height: 8),
+                          Text('Tap button below to enroll students'),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _enrolledStudents.length,
+                      itemBuilder: (context, index) {
+                        final student = _enrolledStudents[index];
+                        return Card(
+                          margin: const EdgeInsets.all(8),
+                          child: ListTile(
+                            title: Text(student.studentName),
+                            subtitle: Text(student.studentRegistrationNumber),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () async {
+                                final success = await ApiService.unenrollStudent(student.enrollmentId);
+                                if (success) {
+                                  _loadEnrolledStudents();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Student removed'), backgroundColor: Colors.green),
+                                  );
+                                }
                               },
                             ),
                           ),
-          ),
-        ],
+                        );
+                      },
+                    ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.pushNamed(
+            context,
+            appRoutes.addEnrolledStudentPage,
+            arguments: widget.classId,
+          ).then((_) => _loadEnrolledStudents());
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }

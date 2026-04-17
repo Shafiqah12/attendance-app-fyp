@@ -1,27 +1,30 @@
-// lib/editStudent.dart
-
-import 'package:attendify/Parts/appDrawer.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'Theme/apptheme.dart';
-import 'package:attendify/services/api_service.dart';
 import 'package:attendify/services/auth_service.dart';
+import 'package:attendify/services/api_service.dart';
+import 'package:attendify/Parts/appDrawer.dart';
+import 'package:attendify/util/appRoutes.dart';
+import 'Theme/apptheme.dart';
 
 class EditStudentPage extends StatefulWidget {
   final String? studentId;
   const EditStudentPage({super.key, this.studentId});
 
   @override
-  _EditStudentPageState createState() => _EditStudentPageState();
+  State<EditStudentPage> createState() => _EditStudentPageState();
 }
 
 class _EditStudentPageState extends State<EditStudentPage> {
   late TextEditingController _nameController;
   late TextEditingController _regNumberController;
-  late TextEditingController _classController; // Optional class field
+  late TextEditingController _classController;
+  late TextEditingController _emailController;
   bool _loading = true;
   bool _saving = false;
   String? _error;
+  String? _studentId;
+  String? _originalEmail;
 
   @override
   void initState() {
@@ -29,7 +32,10 @@ class _EditStudentPageState extends State<EditStudentPage> {
     _nameController = TextEditingController();
     _regNumberController = TextEditingController();
     _classController = TextEditingController();
-    if (widget.studentId != null) _fetchStudent();
+    _emailController = TextEditingController();
+    if (widget.studentId != null) {
+      _fetchStudent();
+    }
   }
 
   Future<void> _fetchStudent() async {
@@ -50,13 +56,20 @@ class _EditStudentPageState extends State<EditStudentPage> {
         return;
       }
 
-      // Fetch student details from API
-      final student = await ApiService.getStudentById(widget.studentId!);
+      // Get student details from API
+      final response = await http.get(
+        Uri.parse('${ApiService.baseUrl}/api/students/${widget.studentId}'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 10));
       
-      if (student != null) {
-        _nameController.text = student.studentName;
-        _regNumberController.text = student.studentRegistrationNumber;
-        _classController.text = student.className ?? '';
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        _nameController.text = data['name'] ?? '';
+        _regNumberController.text = data['reg_number'] ?? '';
+        _classController.text = data['class_name'] ?? '';
+        _emailController.text = data['email'] ?? '';
+        _originalEmail = data['email'];
+        _studentId = widget.studentId;
       } else {
         setState(() {
           _error = 'Student not found';
@@ -74,15 +87,27 @@ class _EditStudentPageState extends State<EditStudentPage> {
   }
 
   Future<void> _saveChanges() async {
-    if (widget.studentId == null) return;
+    if (_studentId == null) return;
     
     final newName = _nameController.text.trim();
     final newReg = _regNumberController.text.trim();
+    final newEmail = _emailController.text.trim();
     
-    if (newName.isEmpty || newReg.isEmpty) {
+    if (newName.isEmpty || newReg.isEmpty || newEmail.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please fill all required fields'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validate email format
+    if (!newEmail.contains('@') || !newEmail.contains('.')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid email address'),
           backgroundColor: Colors.red,
         ),
       );
@@ -96,9 +121,16 @@ class _EditStudentPageState extends State<EditStudentPage> {
         'name': newName,
         'registrationNumber': newReg,
         'className': _classController.text.trim(),
+        'email': newEmail,
       };
 
-      final success = await ApiService.updateStudent(widget.studentId!, studentData);
+      final response = await http.put(
+        Uri.parse('${ApiService.baseUrl}/api/students/${_studentId}'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(studentData),
+      ).timeout(const Duration(seconds: 10));
+      
+      final success = response.statusCode == 200;
       
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -137,6 +169,7 @@ class _EditStudentPageState extends State<EditStudentPage> {
     _nameController.dispose();
     _regNumberController.dispose();
     _classController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -149,7 +182,7 @@ class _EditStudentPageState extends State<EditStudentPage> {
 
     return SafeArea(
       child: Scaffold(
-        endDrawer: AppDrawer(),
+        endDrawer: const AppDrawer(),
         appBar: AppBar(
           backgroundColor: theme.primaryColor,
           title: Text('Edit Student', style: theme.appBarTheme.titleTextStyle),
@@ -170,64 +203,101 @@ class _EditStudentPageState extends State<EditStudentPage> {
                       ],
                     ),
                   )
-                : Padding(
+                : SingleChildScrollView(
                     padding: const EdgeInsets.all(20),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          TextField(
-                            controller: _nameController,
-                            decoration: InputDecoration(
-                              labelText: 'Student Name *',
-                              hintText: 'Full name of student',
-                              prefixIcon: Icon(Icons.person, color: theme.iconTheme.color),
-                            ).applyDefaults(inputTh),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Student Name
+                        TextField(
+                          controller: _nameController,
+                          style: textTh.bodyLarge?.copyWith(fontStyle: FontStyle.italic),
+                          inputFormatters: [
+                            LengthLimitingTextInputFormatter(50),
+                            FilteringTextInputFormatter.allow(RegExp(r"[A-Za-z\s]")),
+                          ],
+                          decoration: InputDecoration(
+                            labelText: 'Student Name *',
+                            hintText: 'Full name of student',
+                            prefixIcon: Icon(Icons.person, color: theme.iconTheme.color),
+                          ).applyDefaults(inputTh),
+                        ),
+                        const SizedBox(height: 20),
+                        
+                        // Registration Number
+                        TextField(
+                          controller: _regNumberController,
+                          style: textTh.bodyLarge?.copyWith(fontStyle: FontStyle.italic),
+                          inputFormatters: [
+                            LengthLimitingTextInputFormatter(15),
+                            FilteringTextInputFormatter.allow(RegExp(r"[A-Za-z0-9\-]")),
+                          ],
+                          decoration: InputDecoration(
+                            labelText: 'Registration Number *',
+                            hintText: '22-CS-404',
+                            prefixIcon: Icon(Icons.confirmation_number, color: theme.iconTheme.color),
+                          ).applyDefaults(inputTh),
+                        ),
+                        const SizedBox(height: 20),
+                        
+                        // Email
+                        TextField(
+                          controller: _emailController,
+                          style: textTh.bodyLarge?.copyWith(fontStyle: FontStyle.italic),
+                          inputFormatters: [
+                            LengthLimitingTextInputFormatter(50),
+                            FilteringTextInputFormatter.allow(RegExp(r"[A-Za-z0-9._%+-@]")),
+                          ],
+                          decoration: InputDecoration(
+                            labelText: 'Student Email *',
+                            hintText: 'student@email.com',
+                            prefixIcon: Icon(Icons.email, color: theme.iconTheme.color),
+                          ).applyDefaults(inputTh),
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 20),
+                        
+                        // Class (optional)
+                        TextField(
+                          controller: _classController,
+                          decoration: InputDecoration(
+                            labelText: 'Class (optional)',
+                            hintText: 'Computer Science',
+                            prefixIcon: Icon(Icons.class_, color: theme.iconTheme.color),
+                          ).applyDefaults(inputTh),
+                        ),
+                        const SizedBox(height: 30),
+                        
+                        // Save Button
+                        ConstrainedBox(
+                          constraints: const BoxConstraints.tightFor(height: 48),
+                          child: ElevatedButton(
+                            style: btnTh,
+                            onPressed: _saving ? null : _saveChanges,
+                            child: _saving
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : Text('Save Changes', style: textTh.labelLarge),
                           ),
-                          const SizedBox(height: 20),
-                          TextField(
-                            controller: _regNumberController,
-                            decoration: InputDecoration(
-                              labelText: 'Registration Number *',
-                              hintText: '22-CS-404',
-                              prefixIcon: Icon(Icons.confirmation_number, color: theme.iconTheme.color),
-                            ).applyDefaults(inputTh),
-                          ),
-                          const SizedBox(height: 20),
-                          TextField(
-                            controller: _classController,
-                            decoration: InputDecoration(
-                              labelText: 'Class (optional)',
-                              hintText: 'Computer Science',
-                              prefixIcon: Icon(Icons.class_, color: theme.iconTheme.color),
-                            ).applyDefaults(inputTh),
-                          ),
-                          const SizedBox(height: 30),
-                          ConstrainedBox(
-                            constraints: const BoxConstraints.tightFor(height: 48),
-                            child: ElevatedButton(
-                              style: btnTh,
-                              onPressed: _saving ? null : _saveChanges,
-                              child: _saving
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                    )
-                                  : Text('Save Changes', style: textTh.labelLarge),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            '* Required fields',
-                            style: textTh.bodySmall?.copyWith(color: Colors.grey),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
+                        ),
+                        
+                        const SizedBox(height: 10),
+                        Text(
+                          '* Required fields',
+                          style: textTh.bodySmall?.copyWith(color: Colors.grey),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   ),
       ),
     );
   }
 }
+
+// Add required imports at the top
+import 'dart:convert';
+import 'package:http/http.dart' as http;

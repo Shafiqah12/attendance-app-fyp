@@ -2,8 +2,9 @@ import 'package:attendify/Parts/appDrawer.dart';
 import 'package:attendify/Parts/custom_widgets.dart';
 import 'package:flutter/material.dart';
 import 'util/appRoutes.dart';
-import 'Theme/apptheme.dart'; // ← your theme file
+import 'Theme/apptheme.dart';
 
+// Dashboard menu items
 List<GridItem> items = [
   GridItem(
     title: "Students",
@@ -23,7 +24,7 @@ List<GridItem> items = [
     title: "Report",
     img: "report.png",
     function: (context) {
-      Navigator.of(context).pushNamed(appRoutes.generateReportPage);
+      Navigator.pushNamed(context, appRoutes.generateReportPage);
     },
   ),
   GridItem(
@@ -44,11 +45,11 @@ class CrDashboard extends StatelessWidget {
     final textTh = theme.textTheme;
 
     return Scaffold(
-      endDrawer: AppDrawer(),
+      endDrawer: const AppDrawer(),
       appBar: AppBar(
         backgroundColor: theme.primaryColor,
         title: Text(
-          'Cr Dashboard',
+          'Dashboard',
           style: theme.appBarTheme.titleTextStyle,
         ),
       ),
@@ -58,18 +59,17 @@ class CrDashboard extends StatelessWidget {
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             crossAxisSpacing: 10,
-            childAspectRatio: .7,
+            childAspectRatio: 0.7,
             mainAxisSpacing: 12,
           ),
           itemCount: items.length,
           itemBuilder: (context, index) {
-            // inside your gridCardDashboard widget,
-            // make sure you use textTh.* for any Text styles
             return GestureDetector(
-                onTap: () {
-                  items[index].function(context);
-                },
-                child: gridCardDashboard(item: items[index]));
+              onTap: () {
+                items[index].function(context);
+              },
+              child: gridCardDashboard(item: items[index]),
+            );
           },
         ),
       ),

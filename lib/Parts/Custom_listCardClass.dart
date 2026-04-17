@@ -4,6 +4,7 @@ import '../util/appRoutes.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 
+// ============ CLASS MODEL DEFINED HERE ============
 class Class {
   final String id;
   final String courseName;
@@ -17,9 +18,10 @@ class Class {
     required this.endingDate,
   });
 }
+// =================================================
 
 class listCardClass extends StatelessWidget {
-  final Class classes;
+  final Map<String, dynamic> classes;
 
   const listCardClass({
     super.key,
@@ -27,12 +29,11 @@ class listCardClass extends StatelessWidget {
   });
 
   Future<void> _deleteClass(BuildContext context) async {
-    // Show confirmation dialog
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Class'),
-        content: Text('Are you sure you want to delete "${classes.courseName}"?'),
+        content: Text('Are you sure you want to delete "${classes['class_name'] ?? classes['courseName']}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -49,45 +50,18 @@ class listCardClass extends StatelessWidget {
     if (confirm != true) return;
 
     try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final userId = authService.userId;
-      
-      if (userId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('User not logged in'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
-      final success = await ApiService.deleteClass(classes.id);
+      final success = await ApiService.deleteClass(classes['id'].toString());
       
       if (success && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${classes.courseName} deleted successfully'),
-            backgroundColor: Colors.green,
-          ),
+          SnackBar(content: Text('${classes['class_name'] ?? classes['courseName']} deleted successfully'), backgroundColor: Colors.green),
         );
-        // Navigate back or refresh the page
         Navigator.pop(context, true);
-      } else if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to delete class'),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -96,16 +70,18 @@ class listCardClass extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    
+    final className = classes['class_name'] ?? classes['courseName'] ?? 'Unknown';
+    final startDate = classes['starting_date'] ?? classes['startingDate'] ?? '';
+    final endDate = classes['ending_date'] ?? classes['endingDate'] ?? '';
+    final classId = classes['id'].toString();
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(
-          width: 2,
-          color: theme.colorScheme.onSurface,
-          style: BorderStyle.solid,
-        ),
+        border: Border.all(width: 2, color: theme.colorScheme.onSurface),
         boxShadow: [
           BoxShadow(
             color: theme.colorScheme.onSurface.withOpacity(0.2),
@@ -125,9 +101,9 @@ class listCardClass extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(classes.courseName, style: theme.textTheme.titleLarge),
-                    Text('Start: ' + classes.startingDate, style: theme.textTheme.bodySmall),
-                    Text('End: ' + classes.endingDate, style: theme.textTheme.bodySmall),
+                    Text(className, style: theme.textTheme.titleLarge),
+                    Text('Start: $startDate', style: theme.textTheme.bodySmall),
+                    Text('End: $endDate', style: theme.textTheme.bodySmall),
                   ],
                 ),
                 ElevatedButton.icon(
@@ -135,11 +111,11 @@ class listCardClass extends StatelessWidget {
                     Navigator.pushNamed(
                       context,
                       appRoutes.enrollStudentPage,
-                      arguments: classes.id,
+                      arguments: classId,
                     );
                   },
                   icon: Icon(Icons.school, color: theme.colorScheme.primary),
-                  label: Text('Students', style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurface)),
+                  label: Text('Students', style: theme.textTheme.labelMedium),
                   style: ElevatedButton.styleFrom(backgroundColor: theme.colorScheme.surface, elevation: 0),
                 ),
               ],
@@ -153,11 +129,11 @@ class listCardClass extends StatelessWidget {
                   Navigator.pushNamed(
                     context,
                     appRoutes.attendancePage,
-                    arguments: classes.id,
+                    arguments: classId,
                   );
                 },
                 icon: Icon(Icons.check_box, color: theme.colorScheme.primary),
-                label: Text('Attnd', style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurface, fontSize: 12)),
+                label: Text('Attnd', style: theme.textTheme.bodyLarge?.copyWith(fontSize: 12)),
                 style: ElevatedButton.styleFrom(backgroundColor: theme.colorScheme.surface, elevation: 0),
               ),
               ElevatedButton.icon(
@@ -165,17 +141,17 @@ class listCardClass extends StatelessWidget {
                   Navigator.pushNamed(
                     context,
                     appRoutes.editClassPage,
-                    arguments: classes.id,
+                    arguments: classId,
                   );
                 },
                 icon: Icon(Icons.edit, color: theme.colorScheme.primary),
-                label: Text('Edit', style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurface, fontSize: 12)),
+                label: Text('Edit', style: theme.textTheme.bodyLarge?.copyWith(fontSize: 12)),
                 style: ElevatedButton.styleFrom(backgroundColor: theme.colorScheme.surface, elevation: 0),
               ),
               ElevatedButton.icon(
                 onPressed: () => _deleteClass(context),
                 icon: Icon(Icons.delete, color: theme.colorScheme.primary),
-                label: Text('Del', style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurface, fontSize: 12)),
+                label: Text('Del', style: theme.textTheme.bodyLarge?.copyWith(fontSize: 12)),
                 style: ElevatedButton.styleFrom(backgroundColor: theme.colorScheme.surface, elevation: 0),
               ),
             ],

@@ -1,11 +1,8 @@
-// addClass.dart
-import 'package:attendify/util/appRoutes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:attendify/services/auth_service.dart';
 import 'package:attendify/services/api_service.dart';
-import 'Theme/apptheme.dart';
 
 class AddClassPage extends StatefulWidget {
   const AddClassPage({super.key});
@@ -18,30 +15,32 @@ class _AddClassPageState extends State<AddClassPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _startController = TextEditingController();
   final TextEditingController _endController = TextEditingController();
+  final TextEditingController _latitudeController = TextEditingController();
+  final TextEditingController _longitudeController = TextEditingController();
   bool _isSubmitting = false;
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _startController.dispose();
-    _endController.dispose();
-    super.dispose();
-  }
-
   Future<void> _submit() async {
-    // Validate inputs
     final name = _nameController.text.trim();
     final start = _startController.text.trim();
     final end = _endController.text.trim();
+    final latText = _latitudeController.text.trim();
+    final lngText = _longitudeController.text.trim();
     
     if (name.isEmpty || start.isEmpty || end.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill all fields'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showSnackBar('Please fill all required fields', Colors.red);
       return;
+    }
+
+    double? latitude;
+    double? longitude;
+    
+    if (latText.isNotEmpty && lngText.isNotEmpty) {
+      latitude = double.tryParse(latText);
+      longitude = double.tryParse(lngText);
+      if (latitude == null || longitude == null) {
+        _showSnackBar('Invalid coordinates. Use format like 5.4085', Colors.red);
+        return;
+      }
     }
 
     setState(() => _isSubmitting = true);
@@ -51,48 +50,30 @@ class _AddClassPageState extends State<AddClassPage> {
       final userId = authService.userId;
       
       if (userId == null) {
-        // User not logged in, go back to login
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, appRoutes.loginPage);
-        }
+        Navigator.pushReplacementNamed(context, '/login');
         return;
       }
 
-      // Prepare class data
       final classData = {
         'courseName': name,
         'startingDate': start,
         'endingDate': end,
         'ownerUid': userId,
+        'latitude': latitude,
+        'longitude': longitude,
       };
 
-      // Call API to add class
       final success = await ApiService.addClass(classData);
       
       if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Class added successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context, true); // Return true to indicate success
+        _showSnackBar('Class added successfully', Colors.green);
+        Navigator.pop(context, true);
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to add class'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showSnackBar('Failed to add class', Colors.red);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showSnackBar('Error: $e', Colors.red);
       }
     } finally {
       if (mounted) {
@@ -101,101 +82,96 @@ class _AddClassPageState extends State<AddClassPage> {
     }
   }
 
-  Future<void> _selectDate(TextEditingController controller) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: color),
     );
-    if (picked != null) {
-      // Format date as DD-MM-YYYY to match your hint text
-      final formattedDate = "${picked.day.toString().padLeft(2, '0')}-"
-          "${picked.month.toString().padLeft(2, '0')}-"
-          "${picked.year}";
-      controller.text = formattedDate;
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final textTh = theme.textTheme;
-    final inputTh = theme.inputDecorationTheme;
-    final btnTh = theme.elevatedButtonTheme.style;
-
-    return SafeArea(
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: theme.primaryColor,
-          title: Text('Add Class', style: theme.appBarTheme.titleTextStyle),
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(20),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Class Name Field
-                TextField(
-                  controller: _nameController,
-                  style: textTh.bodyLarge?.copyWith(fontStyle: FontStyle.italic),
-                  inputFormatters: [
-                    LengthLimitingTextInputFormatter(50),
-                    FilteringTextInputFormatter.allow(RegExp(r"[A-Za-z0-9 ]")),
-                  ],
-                  decoration: InputDecoration(
-                    labelText: 'Class Name',
-                    hintText: 'Software Engineering',
-                    prefixIcon: Icon(Icons.class_, color: theme.iconTheme.color),
-                  ).applyDefaults(inputTh),
-                ),
-                const SizedBox(height: 20),
-
-                // Start Date Field (with date picker)
-                TextFormField(
-                  controller: _startController,
-                  style: textTh.bodyLarge?.copyWith(fontStyle: FontStyle.italic),
-                  readOnly: true, // Make it read-only to force date picker
-                  onTap: () => _selectDate(_startController),
-                  decoration: InputDecoration(
-                    labelText: 'Start Date',
-                    hintText: '21-03-2025',
-                    prefixIcon: Icon(Icons.calendar_today, color: theme.iconTheme.color),
-                    suffixIcon: Icon(Icons.arrow_drop_down, color: theme.iconTheme.color),
-                  ).applyDefaults(inputTh),
-                ),
-                const SizedBox(height: 20),
-
-                // End Date Field (with date picker)
-                TextFormField(
-                  controller: _endController,
-                  style: textTh.bodyLarge?.copyWith(fontStyle: FontStyle.italic),
-                  readOnly: true, // Make it read-only to force date picker
-                  onTap: () => _selectDate(_endController),
-                  decoration: InputDecoration(
-                    labelText: 'End Date',
-                    hintText: '21-07-2025',
-                    prefixIcon: Icon(Icons.calendar_today, color: theme.iconTheme.color),
-                    suffixIcon: Icon(Icons.arrow_drop_down, color: theme.iconTheme.color),
-                  ).applyDefaults(inputTh),
-                ),
-                const SizedBox(height: 30),
-
-                // Submit Button
-                ConstrainedBox(
-                  constraints: BoxConstraints.tightFor(width: double.infinity, height: 48),
-                  child: ElevatedButton(
-                    style: btnTh,
-                    onPressed: _isSubmitting ? null : _submit,
-                    child: _isSubmitting
-                        ? const CircularProgressIndicator()
-                        : const Text('Add New Class'),
-                  ),
-                ),
-              ],
+    return Scaffold(
+      appBar: AppBar(title: const Text('Add Class')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Class Name *',
+                border: OutlineInputBorder(),
+              ),
             ),
-          ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _startController,
+              decoration: const InputDecoration(
+                labelText: 'Start Date (DD-MM-YYYY) *',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _endController,
+              decoration: const InputDecoration(
+                labelText: 'End Date (DD-MM-YYYY) *',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    '📍 Classroom Location (Optional)',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Masukkan koordinat dari Google Maps untuk GPS verification',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _latitudeController,
+              decoration: const InputDecoration(
+                labelText: 'Latitude',
+                hintText: 'e.g., 5.4085',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _longitudeController,
+              decoration: const InputDecoration(
+                labelText: 'Longitude',
+                hintText: 'e.g., 103.0862',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _isSubmitting ? null : _submit,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              child: _isSubmitting 
+                  ? const CircularProgressIndicator() 
+                  : const Text('Add Class'),
+            ),
+          ],
         ),
       ),
     );

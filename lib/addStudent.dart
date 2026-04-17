@@ -1,4 +1,3 @@
-// addStudent.dart
 import 'package:attendify/util/appRoutes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,8 +16,9 @@ class AddStudentPage extends StatefulWidget {
 
 class _AddStudentPageState extends State<AddStudentPage> {
   final _nameCtrl = TextEditingController();
-  final _regCtrl  = TextEditingController();
-  final _classCtrl = TextEditingController(); // Optional: add class field
+  final _regCtrl = TextEditingController();
+  final _classCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();  // BARU: untuk email
   bool _isSubmitting = false;
 
   @override
@@ -26,6 +26,7 @@ class _AddStudentPageState extends State<AddStudentPage> {
     _nameCtrl.dispose();
     _regCtrl.dispose();
     _classCtrl.dispose();
+    _emailCtrl.dispose();
     super.dispose();
   }
 
@@ -33,11 +34,23 @@ class _AddStudentPageState extends State<AddStudentPage> {
     // Validate inputs
     final name = _nameCtrl.text.trim();
     final reg  = _regCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
     
-    if (name.isEmpty || reg.isEmpty) {
+    if (name.isEmpty || reg.isEmpty || email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill all required fields'),
+          content: Text('Please fill all required fields (Name, Registration Number, Email)'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validate email format
+    if (!email.contains('@') || !email.contains('.')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid email address'),
           backgroundColor: Colors.red,
         ),
       );
@@ -51,20 +64,19 @@ class _AddStudentPageState extends State<AddStudentPage> {
       final userId = authService.userId;
       
       if (userId == null) {
-        // User not logged in, go back to login
         if (mounted) {
           Navigator.pushReplacementNamed(context, appRoutes.loginPage);
         }
         return;
       }
 
-      // Prepare student data
+      // Prepare student data with email
       final studentData = {
         'name': name,
         'registrationNumber': reg,
         'ownerUid': userId,
-        'class': _classCtrl.text.trim().isEmpty ? null : _classCtrl.text.trim(),
-        'createdAt': DateTime.now().toIso8601String(),
+        'class': _classCtrl.text.trim(),
+        'email': email,  // BARU: hantar email ke API
       };
 
       // Call API to add student
@@ -77,7 +89,7 @@ class _AddStudentPageState extends State<AddStudentPage> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context, true); // Return true to indicate success
+        Navigator.pop(context, true);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -153,6 +165,23 @@ class _AddStudentPageState extends State<AddStudentPage> {
                 ),
                 const SizedBox(height: 20),
                 
+                // Email (BARU)
+                TextField(
+                  controller: _emailCtrl,
+                  style: textTh.bodyLarge?.copyWith(fontStyle: FontStyle.italic),
+                  inputFormatters: [
+                    LengthLimitingTextInputFormatter(50),
+                    FilteringTextInputFormatter.allow(RegExp(r"[A-Za-z0-9._%+-@]")),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'Student Email *',
+                    hintText: 'student@email.com',
+                    prefixIcon: Icon(Icons.email, color: theme.iconTheme.color),
+                  ).applyDefaults(inputTh),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 20),
+                
                 // Class (optional)
                 TextField(
                   controller: _classCtrl,
@@ -184,7 +213,7 @@ class _AddStudentPageState extends State<AddStudentPage> {
                 
                 // Required fields note
                 Text(
-                  '* Required fields',
+                  '* Required fields (Name, Registration Number, Email)',
                   style: textTh.bodySmall?.copyWith(color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
