@@ -15,7 +15,7 @@ import 'package:attendify/editClass.dart';
 import 'package:attendify/editAttendenceView.dart';
 import 'package:attendify/viewAttendenceView.dart';
 import 'package:attendify/addEnrolledStudent.dart';
-import 'package:attendify/login.dart';
+import 'package:attendify/loginpage.dart';
 import 'package:attendify/signUp.dart';
 import 'package:attendify/write_nfc.dart';
 import 'package:attendify/test_nfc.dart';

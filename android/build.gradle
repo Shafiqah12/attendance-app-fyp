@@ -1,22 +1,19 @@
-// android/build.gradle
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    
+    dependencies {
+        classpath "com.android.tools.build:gradle:7.4.2"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.22"
+    }
+}
 
- buildscript {
-     repositories {
-         google()
-         mavenCentral()
-     }
-     dependencies {
-        classpath "com.android.tools.build:gradle:8.2.1"
-     }
- }
-
-
-// your existing allprojects, etc.
 allprojects {
     repositories {
         google()
         mavenCentral()
-       
     }
 }
 

@@ -47,7 +47,7 @@ class AttendanceRecord {
 
 class ApiService {
   // Guna 10.0.2.2 untuk Android USB debugging
-  static const String baseUrl = 'http://10.159.158.231:5000';
+  static const String baseUrl = 'http://10.159.158.28:5000';
   
   // ==================== AUTHENTICATION ====================
   
