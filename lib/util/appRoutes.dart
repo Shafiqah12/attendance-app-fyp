@@ -17,6 +17,8 @@ import 'package:attendify/viewAttendenceView.dart';
 import 'package:attendify/addEnrolledStudent.dart';
 import 'package:attendify/login.dart';
 import 'package:attendify/signUp.dart';
+import 'package:attendify/write_nfc.dart';
+import 'package:attendify/test_nfc.dart';
 
 class appRoutes {
   static const String loginPage = "/";
@@ -37,6 +39,9 @@ class appRoutes {
   static const String editAttendanceViewPage = "/editAttendance";
   static const String viewAttendanceViewPage = "/viewAttendance";
   static const String addEnrolledStudentPage = "/addEnrolledStudentPage";
+  static const String writeNFCPage = "/writenfc";
+  // Dalam class appRoutes:
+  static const String testNFCPage = "/testnfc";
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -112,7 +117,14 @@ class appRoutes {
       case appRoutes.addEnrolledStudentPage:
         final classId = settings.arguments as String?;
         return MaterialPageRoute(builder: (c) => AddEnrolledStudent(classId: classId));
-        
+      
+      case appRoutes.writeNFCPage:
+        return MaterialPageRoute(builder: (c) => const WriteNFCPage());
+      
+      // Dalam generateRoute:
+      case appRoutes.testNFCPage:
+       return MaterialPageRoute(builder: (c) => const TestNFCPage());
+
       default:
         return MaterialPageRoute(
           builder: (c) => const Scaffold(

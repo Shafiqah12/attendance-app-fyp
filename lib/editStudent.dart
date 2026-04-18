@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:attendify/services/auth_service.dart';
 import 'package:attendify/services/api_service.dart';
@@ -56,10 +58,8 @@ class _EditStudentPageState extends State<EditStudentPage> {
         return;
       }
 
-      // Get student details from API
       final response = await http.get(
         Uri.parse('${ApiService.baseUrl}/api/students/${widget.studentId}'),
-        headers: {'Content-Type': 'application/json'},
       ).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
@@ -103,7 +103,6 @@ class _EditStudentPageState extends State<EditStudentPage> {
       return;
     }
 
-    // Validate email format
     if (!newEmail.contains('@') || !newEmail.contains('.')) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -208,7 +207,6 @@ class _EditStudentPageState extends State<EditStudentPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Student Name
                         TextField(
                           controller: _nameController,
                           style: textTh.bodyLarge?.copyWith(fontStyle: FontStyle.italic),
@@ -223,8 +221,6 @@ class _EditStudentPageState extends State<EditStudentPage> {
                           ).applyDefaults(inputTh),
                         ),
                         const SizedBox(height: 20),
-                        
-                        // Registration Number
                         TextField(
                           controller: _regNumberController,
                           style: textTh.bodyLarge?.copyWith(fontStyle: FontStyle.italic),
@@ -239,8 +235,6 @@ class _EditStudentPageState extends State<EditStudentPage> {
                           ).applyDefaults(inputTh),
                         ),
                         const SizedBox(height: 20),
-                        
-                        // Email
                         TextField(
                           controller: _emailController,
                           style: textTh.bodyLarge?.copyWith(fontStyle: FontStyle.italic),
@@ -256,8 +250,6 @@ class _EditStudentPageState extends State<EditStudentPage> {
                           keyboardType: TextInputType.emailAddress,
                         ),
                         const SizedBox(height: 20),
-                        
-                        // Class (optional)
                         TextField(
                           controller: _classController,
                           decoration: InputDecoration(
@@ -267,8 +259,6 @@ class _EditStudentPageState extends State<EditStudentPage> {
                           ).applyDefaults(inputTh),
                         ),
                         const SizedBox(height: 30),
-                        
-                        // Save Button
                         ConstrainedBox(
                           constraints: const BoxConstraints.tightFor(height: 48),
                           child: ElevatedButton(
@@ -283,7 +273,6 @@ class _EditStudentPageState extends State<EditStudentPage> {
                                 : Text('Save Changes', style: textTh.labelLarge),
                           ),
                         ),
-                        
                         const SizedBox(height: 10),
                         Text(
                           '* Required fields',
@@ -297,7 +286,3 @@ class _EditStudentPageState extends State<EditStudentPage> {
     );
   }
 }
-
-// Add required imports at the top
-import 'dart:convert';
-import 'package:http/http.dart' as http;
