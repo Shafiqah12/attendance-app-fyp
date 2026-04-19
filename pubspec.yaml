@@ -27,6 +27,10 @@ dependencies:
   nfc_manager: ^3.4.0
   local_auth: ^2.1.6
   flutter_secure_storage: ^9.0.0
+
+  # QR Code
+  qr_flutter: ^4.1.0        # Untuk generate QR code
+  mobile_scanner: ^4.0.0    # Untuk scan QR code
   
   # Permissions
   permission_handler: ^12.0.0+1

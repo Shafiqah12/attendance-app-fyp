@@ -6,6 +6,7 @@ import 'package:attendify/services/api_service.dart';
 import 'package:attendify/services/auth_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:attendify/services/nfc_service.dart';
+import 'package:attendify/widgets/qr_scanner.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -105,7 +106,6 @@ class _MarkAttendanceViewState extends State<MarkAttendanceView> {
     try {
       print('📍 Getting current position...');
       
-      // Add timeout to prevent infinite loading
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       ).timeout(const Duration(seconds: 10));
@@ -201,9 +201,6 @@ class _MarkAttendanceViewState extends State<MarkAttendanceView> {
     setState(() => _saving = true);
     
     try {
-      // ==========================================
-      // STEP 1: CHECK LOCATION PERMISSION FIRST
-      // ==========================================
       print('🔍 Step 1: Checking location permission...');
       bool hasPermission = await _checkLocationPermission();
       if (!hasPermission) {
@@ -213,9 +210,6 @@ class _MarkAttendanceViewState extends State<MarkAttendanceView> {
       }
       print('✅ Location permission granted');
       
-      // ==========================================
-      // STEP 2: CHECK DISTANCE FIRST (BEFORE READING NFC)
-      // ==========================================
       setState(() {
         _distanceMessage = '🔍 Checking distance to classroom...';
       });
@@ -226,8 +220,6 @@ class _MarkAttendanceViewState extends State<MarkAttendanceView> {
       if (!isWithinRange) {
         print('❌ Too far from classroom! NFC rejected.');
         setState(() => _saving = false);
-        
-        // Show clear error message with distance
         _showSnackBar(
           '❌ You must be within 5 meters of the classroom!\n$_distanceMessage', 
           Colors.red
@@ -237,9 +229,6 @@ class _MarkAttendanceViewState extends State<MarkAttendanceView> {
       
       print('✅ Within 5 meter range! Proceeding to NFC...');
       
-      // ==========================================
-      // STEP 3: ONLY THEN READ NFC TAG
-      // ==========================================
       setState(() {
         _distanceMessage = '✅ Within range! Please tap your NFC card...';
       });
@@ -256,9 +245,6 @@ class _MarkAttendanceViewState extends State<MarkAttendanceView> {
       
       print('✅ NFC tag read successfully: $nfcId');
       
-      // ==========================================
-      // STEP 4: VERIFY NFC CARD WITH BACKEND
-      // ==========================================
       setState(() {
         _distanceMessage = '🔍 Verifying NFC card...';
       });
@@ -277,7 +263,6 @@ class _MarkAttendanceViewState extends State<MarkAttendanceView> {
         print('✅ NFC card belongs to: $studentName (ID: $studentId)');
         print('👤 Current user ID: $currentUserId');
         
-        // Check if NFC card belongs to current user
         if (studentId == currentUserId) {
           print('✅ Card matches current user. Marking attendance...');
           
@@ -286,8 +271,6 @@ class _MarkAttendanceViewState extends State<MarkAttendanceView> {
           });
           
           _showSnackBar('✅ $studentName marked present via NFC!', Colors.green);
-          
-          // Auto save attendance
           await _saveAttendance();
         } else {
           print('❌ Card belongs to different user!');
@@ -301,6 +284,113 @@ class _MarkAttendanceViewState extends State<MarkAttendanceView> {
       print('❌ NFC Error: $e');
       _showSnackBar('Error: $e', Colors.red);
     } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
+
+  Future<void> _markWithQR() async {
+    if (_saving) return;
+    
+    setState(() => _saving = true);
+    
+    try {
+      print('🔍 Step 1: Checking location permission...');
+      bool hasPermission = await _checkLocationPermission();
+      if (!hasPermission) {
+        print('❌ Location permission denied');
+        setState(() => _saving = false);
+        return;
+      }
+      print('✅ Location permission granted');
+      
+      setState(() {
+        _distanceMessage = '🔍 Checking distance to classroom...';
+      });
+      
+      print('🔍 Step 2: Checking distance to classroom...');
+      bool isWithinRange = await _isWithinClassroom();
+      
+      if (!isWithinRange) {
+        print('❌ Too far from classroom! QR rejected.');
+        setState(() => _saving = false);
+        _showSnackBar(
+          '❌ You must be within 5 meters of the classroom!\n$_distanceMessage', 
+          Colors.red
+        );
+        return;
+      }
+      
+      print('✅ Within 5 meter range! Proceeding to QR scan...');
+      
+      setState(() {
+        _distanceMessage = '✅ Within range! Please scan QR code...';
+        _saving = false;
+      });
+      
+      print('🔍 Step 3: Opening QR scanner...');
+      final qrData = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const QRScanner(),
+        ),
+      );
+      
+      if (qrData != null && qrData.isNotEmpty) {
+        print('✅ QR code scanned: $qrData');
+        setState(() => _saving = true);
+        
+        setState(() {
+          _distanceMessage = '🔍 Verifying QR code...';
+        });
+        
+        final authService = Provider.of<AuthService>(context, listen: false);
+        final currentUserId = authService.userId;
+        
+        if (currentUserId == null) {
+          _showSnackBar('User not logged in', Colors.red);
+          setState(() => _saving = false);
+          return;
+        }
+        
+        final response = await http.post(
+          Uri.parse('${ApiService.baseUrl}/api/attendance/qr/verify'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({
+            'token': qrData,
+            'studentId': currentUserId,
+            'classId': widget.classId,
+            'date': todayId,
+          }),
+        ).timeout(const Duration(seconds: 10));
+        
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          if (data['success'] == true) {
+            print('✅ QR verification successful!');
+            setState(() {
+              attendanceStatus[currentUserId] = 'P';
+            });
+            _showSnackBar('✅ Attendance marked via QR!', Colors.green);
+            await _saveAttendance();
+          } else {
+            print('❌ QR verification failed: ${data['error']}');
+            _showSnackBar(data['error'] ?? '❌ Invalid QR code', Colors.red);
+            setState(() => _saving = false);
+          }
+        } else {
+          print('❌ QR verification HTTP error: ${response.statusCode}');
+          _showSnackBar('❌ Failed to verify QR code', Colors.red);
+          setState(() => _saving = false);
+        }
+      } else {
+        print('❌ No QR code scanned');
+        setState(() => _saving = false);
+      }
+    } catch (e) {
+      print('❌ QR Error: $e');
+      _showSnackBar('Error: $e', Colors.red);
       if (mounted) {
         setState(() => _saving = false);
       }
@@ -351,7 +441,6 @@ class _MarkAttendanceViewState extends State<MarkAttendanceView> {
                 )
               : Column(
                   children: [
-                    // Location Banner with dynamic colors based on status
                     Container(
                       margin: const EdgeInsets.all(16),
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -391,7 +480,7 @@ class _MarkAttendanceViewState extends State<MarkAttendanceView> {
                             child: Text(
                               _distanceMessage.isEmpty 
                                   ? (_hasLocation 
-                                      ? '📍 Location will be checked when you tap NFC' 
+                                      ? '📍 Location will be checked when you tap NFC/QR' 
                                       : '⚠️ No location set for this class')
                                   : _distanceMessage,
                               style: TextStyle(
@@ -409,7 +498,6 @@ class _MarkAttendanceViewState extends State<MarkAttendanceView> {
                       ),
                     ),
                     
-                    // Subject and Buttons
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: Row(
@@ -440,7 +528,6 @@ class _MarkAttendanceViewState extends State<MarkAttendanceView> {
                           ),
                           Column(
                             children: [
-                              // NFC Button
                               SizedBox(
                                 width: 90,
                                 height: 45,
@@ -455,7 +542,20 @@ class _MarkAttendanceViewState extends State<MarkAttendanceView> {
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              // Save Button (only for lecturer)
+                              SizedBox(
+                                width: 90,
+                                height: 45,
+                                child: ElevatedButton.icon(
+                                  onPressed: _saving ? null : _markWithQR,
+                                  icon: const Icon(Icons.qr_code_scanner, size: 18),
+                                  label: const Text('QR'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.teal,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
                               if (isLecturer)
                                 SizedBox(
                                   width: 90,
@@ -478,7 +578,6 @@ class _MarkAttendanceViewState extends State<MarkAttendanceView> {
                       ),
                     ),
                     
-                    // Student List
                     Expanded(
                       child: displayStudents.isEmpty
                           ? Center(

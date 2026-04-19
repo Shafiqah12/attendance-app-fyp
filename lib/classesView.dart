@@ -27,9 +27,11 @@ class _ClassesViewPageState extends State<ClassesViewPage> {
     
     final authService = Provider.of<AuthService>(context, listen: false);
     final userId = authService.userId;
+    final role = authService.userRole;
     
-    if (userId != null) {
-      final classes = await ApiService.getClasses(userId);
+    if (userId != null && role != null) {
+      final classes = await ApiService.getClasses(userId, role);
+      print('Loaded classes: $classes'); // Debug
       setState(() {
         _classes = classes;
         _isLoading = false;
@@ -95,7 +97,8 @@ class _ClassesViewPageState extends State<ClassesViewPage> {
                   itemBuilder: (context, index) {
                     final c = _classes[index];
                     final hasLocation = (c['latitude'] != null && c['longitude'] != null);
-                    final className = c['class_name'] ?? c['courseName'] ?? 'Unknown';
+                    // FIXED: Use 'name' from API
+                    final className = c['name'] ?? c['class_name'] ?? c['courseName'] ?? 'Unknown';
                     final classId = c['id'].toString();
                     
                     return Card(
@@ -105,27 +108,27 @@ class _ClassesViewPageState extends State<ClassesViewPage> {
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Start: ${c['starting_date'] ?? c['startingDate'] ?? ''}'),
-                            Text('End: ${c['ending_date'] ?? c['endingDate'] ?? ''}'),
+                            Text('ID: $classId'),
                             if (hasLocation)
-                              const Text('📍 GPS enabled', style: TextStyle(color: Colors.green, fontSize: 10)),
+                              const Text('📍 GPS enabled', style: TextStyle(color: Colors.green, fontSize: 12)),
                           ],
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Enroll Button
-                            IconButton(
-                              icon: const Icon(Icons.people, color: Colors.blue),
-                              onPressed: () {
-                                Navigator.pushNamed(
-                                  context,
-                                  appRoutes.enrollStudentPage,
-                                  arguments: classId,
-                                );
-                              },
-                              tooltip: 'Enroll Students',
-                            ),
+                            // Enroll Button (Lecturer only)
+                            if (isLecturer)
+                              IconButton(
+                                icon: const Icon(Icons.people, color: Colors.blue),
+                                onPressed: () {
+                                  Navigator.pushNamed(
+                                    context,
+                                    appRoutes.enrollStudentPage,
+                                    arguments: classId,
+                                  );
+                                },
+                                tooltip: 'Enroll Students',
+                              ),
                             // Attendance Button
                             IconButton(
                               icon: const Icon(Icons.check_circle, color: Colors.green),

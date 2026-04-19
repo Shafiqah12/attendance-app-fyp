@@ -46,7 +46,7 @@ class AttendanceRecord {
 // ==================== API SERVICE ====================
 
 class ApiService {
-  // Guna 10.0.2.2 untuk Android USB debugging
+  // Guna IP komputer anda
   static const String baseUrl = 'http://10.159.158.28:5000';
   
   // ==================== AUTHENTICATION ====================
@@ -58,6 +58,8 @@ class ApiService {
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'email': email, 'password': password}),
       ).timeout(const Duration(seconds: 10));
+      
+      print('Login response: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         return json.decode(response.body);
@@ -82,7 +84,9 @@ class ApiService {
         }),
       ).timeout(const Duration(seconds: 10));
       
-      if (response.statusCode == 201) {
+      print('Signup response: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
         return json.decode(response.body);
       }
       return null;
@@ -94,11 +98,14 @@ class ApiService {
   
   // ==================== CLASSES ====================
   
-  static Future<List<dynamic>> getClasses(String userId) async {
+  static Future<List<dynamic>> getClasses(String userId, String role) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/api/classes?userId=$userId'),
+        Uri.parse('$baseUrl/api/classes?userId=$userId&role=$role'),
       ).timeout(const Duration(seconds: 10));
+      
+      print('Get classes response: ${response.statusCode}');
+      print('Get classes body: ${response.body}');
       
       if (response.statusCode == 200) {
         return json.decode(response.body);
@@ -113,7 +120,7 @@ class ApiService {
   static Future<Map<String, dynamic>?> getClassLocation(String classId) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/api/classes/$classId'),
+        Uri.parse('$baseUrl/api/classes/$classId/location'),
       ).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
@@ -129,12 +136,12 @@ class ApiService {
   static Future<String> getClassName(String classId) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/api/classes/$classId'),
+        Uri.parse('$baseUrl/api/classes/$classId/name'),
       ).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['class_name'] ?? data['courseName'] ?? 'Unknown Class';
+        return data['name'] ?? 'Unknown Class';
       }
       return 'Unknown Class';
     } catch (e) {
@@ -151,7 +158,10 @@ class ApiService {
         body: json.encode(classData),
       ).timeout(const Duration(seconds: 10));
       
-      return response.statusCode == 201;
+      print('Add class response: ${response.statusCode}');
+      print('Add class body: ${response.body}');
+      
+      return response.statusCode == 200;
     } catch (e) {
       print('Error adding class: $e');
       return false;
@@ -265,16 +275,16 @@ class ApiService {
   static Future<List<EnrolledStudent>> getEnrolledStudents(String classId) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/api/classes/$classId/enrolled-students'),
+        Uri.parse('$baseUrl/api/classes/$classId/students'),
       ).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         return data.map((json) => EnrolledStudent(
-          id: json['studentId'].toString(),
-          studentName: json['studentName'] ?? '',
-          studentRegistrationNumber: json['registrationNumber'] ?? '',
-          enrollmentId: json['enrollmentId'].toString(),
+          id: json['id'].toString(),
+          studentName: json['name'] ?? '',
+          studentRegistrationNumber: json['reg_number'] ?? '',
+          enrollmentId: json['enrollmentId']?.toString() ?? '',
         )).toList();
       }
       return [];
@@ -338,15 +348,17 @@ class ApiService {
   static Future<bool> saveAttendance(String classId, String date, List<Map<String, dynamic>> attendanceData) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/api/classes/$classId/attendance'),
+        Uri.parse('$baseUrl/api/attendance/save'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
+          'classId': classId,
           'date': date,
           'attendance': attendanceData,
         }),
       ).timeout(const Duration(seconds: 10));
       
-      return response.statusCode == 201;
+      print('Save attendance response: ${response.statusCode}');
+      return response.statusCode == 200;
     } catch (e) {
       print('Error saving attendance: $e');
       return false;
